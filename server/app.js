@@ -1,6 +1,5 @@
 const express = require('express');
 const path = require('path');
-const cors = require('cors');
 const mongoose = require('mongoose');
 
 const connectDB = require('./config/db');
@@ -46,19 +45,32 @@ const allowedOrigins = [
     process.env.CLIENT_URL,
 ].filter(Boolean);
 
-app.use(
-    cors({
-        origin: (origin, callback) => {
-            // Allow requests with no origin (like mobile apps or curl)
-            if (!origin) return callback(null, true);
-            if (allowedOrigins.includes(origin)) {
-                return callback(null, true);
-            }
-            return callback(new Error('Not allowed by CORS'));
-        },
-        credentials: true,
-    })
-);
+// Custom CORS middleware. On Vercel the frontend and API share the same domain
+// (monorepo), so the browser sends same-origin requests. We allow those
+// automatically, plus any origin in the allowlist, plus requests with no origin
+// (curl, mobile apps). This avoids the "Not allowed by CORS" error when the
+// deployed URL is not exactly listed in CLIENT_URL.
+app.use((req, res, next) => {
+    const origin = req.headers.origin;
+    const host = req.headers.host;
+    const sameOrigin =
+        origin && host && (origin === `https://${host}` || origin === `http://${host}`);
+
+    if (!origin || sameOrigin || allowedOrigins.includes(origin)) {
+        if (origin) {
+            res.setHeader('Access-Control-Allow-Origin', origin);
+        }
+        res.setHeader('Access-Control-Allow-Credentials', 'true');
+        res.setHeader('Access-Control-Allow-Methods', 'GET,POST,PUT,DELETE,PATCH,OPTIONS');
+        res.setHeader('Access-Control-Allow-Headers', 'Content-Type,Authorization');
+        if (req.method === 'OPTIONS') {
+            return res.sendStatus(204);
+        }
+        return next();
+    }
+
+    return res.status(403).json({ message: 'Not allowed by CORS' });
+});
 
 // Body parser
 app.use(express.json({ limit: '10mb' }));
