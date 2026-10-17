@@ -88,8 +88,11 @@ const AdminCustomization = () => {
         setMessage(null);
         try {
             const data = await uploadImage(file);
-            // Add cache-busting so browser shows the new image immediately
-            const url = `${data.url}?v=${Date.now()}`;
+            // Add cache-busting so browser shows the new image immediately.
+            // Only append the query string to regular URLs, not base64 data URLs.
+            const url = data.url.startsWith('data:')
+                ? data.url
+                : `${data.url}?v=${Date.now()}`;
             setForm((prev) => ({ ...prev, [field]: url }));
             setMessage({
                 variant: 'success',
@@ -98,7 +101,7 @@ const AdminCustomization = () => {
         } catch (error) {
             setMessage({
                 variant: 'error',
-                text: error.response?.data?.message || 'Upload failed. Check Cloudinary configuration.',
+                text: error.response?.data?.message || 'Upload failed. Please try again.',
             });
         } finally {
             setUploading(false);

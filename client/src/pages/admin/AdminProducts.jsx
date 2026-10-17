@@ -97,7 +97,7 @@ const AdminProducts = () => {
         } catch (error) {
             setMessage({
                 variant: 'error',
-                text: error.response?.data?.message || 'Image upload failed. Check Cloudinary setup.',
+                text: error.response?.data?.message || 'Image upload failed. Please try again.',
             });
         } finally {
             setUploading(false);
@@ -314,7 +314,7 @@ const AdminProducts = () => {
                             </div>
                         )}
                         <p className="form-hint">
-                            You can upload an image (Cloudinary) or paste an image URL. If you leave it empty, a placeholder will be used.
+                            You can upload an image or paste an image URL. If you leave it empty, a placeholder will be used.
                         </p>
                     </div>
 
