@@ -5,10 +5,6 @@ const fs = require('fs');
 const multer = require('multer');
 const { protect, admin } = require('../middleware/auth');
 
-// On Vercel, the filesystem is read-only/ephemeral, so local disk uploads
-// cannot persist. Cloudinary is required for image uploads in production.
-const isVercel = !!process.env.VERCEL;
-
 // Cloudinary is only used if it is actually configured (not placeholder values).
 const cloudinaryConfigured =
     process.env.CLOUDINARY_CLOUD_NAME &&
@@ -24,32 +20,12 @@ if (cloudinaryConfigured) {
     const cloudinaryModule = require('../config/cloudinary');
     cloudinary = cloudinaryModule.cloudinary;
     upload = cloudinaryModule.upload;
-} else if (isVercel) {
-    // On Vercel without Cloudinary, uploads cannot be persisted. Provide a
-    // multer memory storage so the request still parses, but the route will
-    // return a clear error telling the admin to configure Cloudinary.
-    upload = multer({ storage: multer.memoryStorage() });
 } else {
-    // Local disk storage fallback so admins can upload images even without Cloudinary.
-    const uploadsDir = path.join(__dirname, '..', 'uploads');
-    if (!fs.existsSync(uploadsDir)) {
-        fs.mkdirSync(uploadsDir, { recursive: true });
-    }
-
-    const storage = multer.diskStorage({
-        destination: (req, file, cb) => cb(null, uploadsDir),
-        filename: (req, file, cb) => {
-            const ext = path.extname(file.originalname) || '.jpg';
-            const base = path.basename(file.originalname, ext)
-                .toLowerCase()
-                .replace(/[^a-z0-9]+/g, '-')
-                .replace(/^-+|-+$/g, '') || 'image';
-            cb(null, `${Date.now()}-${base}${ext}`);
-        },
-    });
-
+    // No Cloudinary: use memory storage so the image can be converted to a
+    // base64 data URL and stored directly in MongoDB. This works on Vercel
+    // (no filesystem needed) and locally, so images upload without a URL.
     upload = multer({
-        storage,
+        storage: multer.memoryStorage(),
         limits: { fileSize: 5 * 1024 * 1024 }, // 5MB
         fileFilter: (req, file, cb) => {
             const allowedTypes = ['image/jpeg', 'image/png', 'image/webp', 'image/gif', 'image/svg+xml'];
@@ -63,7 +39,7 @@ if (cloudinaryConfigured) {
 }
 
 // @route   POST /api/upload
-// @desc     Upload a single image (Cloudinary if configured, otherwise local disk)
+// @desc     Upload a single image (Cloudinary if configured, otherwise base64 data URL)
 // @access   Private/Admin
 router.post('/', protect, admin, (req, res) => {
     upload.single('image')(req, res, async (err) => {
@@ -82,16 +58,14 @@ router.post('/', protect, admin, (req, res) => {
             if (cloudinaryConfigured) {
                 url = req.file.path;
                 publicId = req.file.filename;
-            } else if (isVercel) {
-                // On Vercel, local disk storage is not available. Cloudinary
-                // must be configured for image uploads to work.
-                return res.status(500).json({
-                    message: 'Image uploads require Cloudinary to be configured. Please add CLOUDINARY_CLOUD_NAME, CLOUDINARY_API_KEY, and CLOUDINARY_API_SECRET in your Vercel environment variables.',
-                });
             } else {
-                const port = process.env.PORT || 5000;
-                url = `${req.protocol}://${req.get('host')}/uploads/${req.file.filename}`;
-                publicId = req.file.filename;
+                // No Cloudinary: convert the uploaded image to a base64 data URL
+                // and store it directly in MongoDB. This works on Vercel (no
+                // filesystem needed) and locally, so images upload without a URL.
+                const mime = req.file.mimetype;
+                const base64 = req.file.buffer.toString('base64');
+                url = `data:${mime};base64,${base64}`;
+                publicId = '';
             }
 
             res.json({ url, public_id: publicId });
