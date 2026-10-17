@@ -5,6 +5,10 @@ const fs = require('fs');
 const multer = require('multer');
 const { protect, admin } = require('../middleware/auth');
 
+// On Vercel, the filesystem is read-only/ephemeral, so local disk uploads
+// cannot persist. Cloudinary is required for image uploads in production.
+const isVercel = !!process.env.VERCEL;
+
 // Cloudinary is only used if it is actually configured (not placeholder values).
 const cloudinaryConfigured =
     process.env.CLOUDINARY_CLOUD_NAME &&
@@ -20,6 +24,11 @@ if (cloudinaryConfigured) {
     const cloudinaryModule = require('../config/cloudinary');
     cloudinary = cloudinaryModule.cloudinary;
     upload = cloudinaryModule.upload;
+} else if (isVercel) {
+    // On Vercel without Cloudinary, uploads cannot be persisted. Provide a
+    // multer memory storage so the request still parses, but the route will
+    // return a clear error telling the admin to configure Cloudinary.
+    upload = multer({ storage: multer.memoryStorage() });
 } else {
     // Local disk storage fallback so admins can upload images even without Cloudinary.
     const uploadsDir = path.join(__dirname, '..', 'uploads');
@@ -73,6 +82,12 @@ router.post('/', protect, admin, (req, res) => {
             if (cloudinaryConfigured) {
                 url = req.file.path;
                 publicId = req.file.filename;
+            } else if (isVercel) {
+                // On Vercel, local disk storage is not available. Cloudinary
+                // must be configured for image uploads to work.
+                return res.status(500).json({
+                    message: 'Image uploads require Cloudinary to be configured. Please add CLOUDINARY_CLOUD_NAME, CLOUDINARY_API_KEY, and CLOUDINARY_API_SECRET in your Vercel environment variables.',
+                });
             } else {
                 const port = process.env.PORT || 5000;
                 url = `${req.protocol}://${req.get('host')}/uploads/${req.file.filename}`;

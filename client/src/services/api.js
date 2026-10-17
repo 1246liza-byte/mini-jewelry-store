@@ -1,6 +1,9 @@
 import axios from 'axios';
 
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
+// On Vercel, the client and server share the same domain. The client uses a
+// relative '/api' path so Vercel's rewrite routes it to the server service.
+// For local development, VITE_API_URL can be set to the backend URL.
+const API_URL = import.meta.env.VITE_API_URL || '/api';
 
 const api = axios.create({
     baseURL: API_URL,

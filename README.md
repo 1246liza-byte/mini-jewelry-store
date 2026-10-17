@@ -52,7 +52,7 @@ A complete, functional MERN-stack (MongoDB, Express, React, Node.js) mini e-comm
 | Auth | JWT + bcryptjs |
 | Images | Cloudinary (persistent storage) |
 | Validation | express-validator |
-| Deployment | Vercel (frontend) + Render (backend) |
+| Deployment | Vercel (monorepo — frontend + backend) |
 
 ---
 
@@ -190,9 +190,12 @@ Because each upload is given a unique versioned URL (`?v=timestamp`), the new im
 
 ---
 
-## 🌐 Deployment
+## 🌐 Deployment (Vercel — Monorepo)
 
-You deploy the **backend** and **frontend separately** and connect them.
+This project is configured as a **Vercel Monorepo**: the frontend (`client/`) and
+backend (`server/`) are deployed together from a single GitHub repo using the
+[`vercel.json`](vercel.json) at the project root. Vercel's rewrite routes
+`/api/*` to the serverless backend and everything else to the Vite frontend.
 
 ### Step A — MongoDB Atlas (database)
 1. Create a free cluster at https://www.mongodb.com/cloud/atlas.
@@ -206,42 +209,54 @@ You deploy the **backend** and **frontend separately** and connect them.
 2. On the **Dashboard**, note your **Cloud name**, **API Key**, and **API Secret**.
 3. These become `CLOUDINARY_CLOUD_NAME`, `CLOUDINARY_API_KEY`, `CLOUDINARY_API_SECRET`.
 
-### Step C — Deploy the backend (Render)
+### Step C — Deploy to Vercel
 1. Push your project to GitHub.
-2. Go to https://render.com → **New → Web Service** → connect your repo.
-3. Settings:
-   - **Root Directory:** `server`
-   - **Build Command:** `npm install`
-   - **Start Command:** `npm start`
-4. Add **Environment Variables** (same names as `server/.env`):
-   `MONGODB_URI`, `JWT_SECRET`, `JWT_EXPIRES_IN`, `CLOUDINARY_CLOUD_NAME`,
-   `CLOUDINARY_API_KEY`, `CLOUDINARY_API_SECRET`, `NODE_ENV=production`,
-   `CLIENT_URL=https://your-frontend.vercel.app`
-5. Deploy. Note your backend URL, e.g. `https://rose-gold-api.onrender.com`.
-6. Run the seed **once** (Render Shell → `npm run seed`) to create the admin user & products.
+2. Go to https://vercel.com → **New Project** → import the same repo.
+3. Vercel will auto-detect the monorepo from `vercel.json`. Confirm the settings:
+   - **Root Directory:** (leave as the repo root — `vercel.json` defines the services)
+   - **Framework Preset:** Vite (auto-detected)
+   - **Build Command:** `npm run build` (per service)
+   - **Output Directory:** `dist` (per service)
+4. Add the **Environment Variables** below (Project → Settings → Environment Variables).
+5. Click **Deploy**.
 
-### Step D — Deploy the frontend (Vercel)
-1. Go to https://vercel.com → **New Project** → import the same repo.
-2. Settings:
-   - **Root Directory:** `client`
-   - **Framework Preset:** Vite
-   - **Build Command:** `npm run build`
-   - **Output Directory:** `dist`
-3. Add **Environment Variable**:
-   - `VITE_API_URL` = `https://rose-gold-api.onrender.com/api`
-4. Deploy. Note your frontend URL, e.g. `https://rose-gold.vercel.app`.
+### Environment Variables to add in Vercel
+Add these in **Project → Settings → Environment Variables** (they are read by the
+backend serverless function at runtime):
 
-### Step E — Connect them
-- In **Render**, set `CLIENT_URL` to your Vercel URL and redeploy the backend.
-- In **Vercel**, ensure `VITE_API_URL` points to your Render backend and redeploy the frontend.
+| Variable | Value | Belongs to |
+|----------|-------|-----------|
+| `MONGODB_URI` | Your MongoDB Atlas connection string | Backend |
+| `JWT_SECRET` | A long random string (see below) | Backend |
+| `JWT_EXPIRES_IN` | `7d` | Backend |
+| `CLOUDINARY_CLOUD_NAME` | Your Cloudinary cloud name | Backend |
+| `CLOUDINARY_API_KEY` | Your Cloudinary API key | Backend |
+| `CLOUDINARY_API_SECRET` | Your Cloudinary API secret | Backend |
+| `CLIENT_URL` | Your deployed frontend URL, e.g. `https://rose-gold.vercel.app` | Backend |
+| `ADMIN_EMAIL` | Admin login email (used when auto-seeding) | Backend |
+| `ADMIN_PASSWORD` | Admin login password (used when auto-seeding) | Backend |
+
+Generate a strong `JWT_SECRET`:
+```bash
+node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
+```
+
+> **Frontend note:** The client uses a relative `/api` path, so **no** `VITE_API_URL`
+> is needed on Vercel. Do **not** add frontend secrets — `VITE_*` vars are public.
+
+### Seeding the database
+On first deploy, the backend auto-seeds the admin user, sample products, and
+default settings when it detects an empty database. If you need to re-seed,
+run `npm run seed` from the `server/` directory locally (or via a one-off
+script) against the same `MONGODB_URI`.
 
 ### ✅ Deployment verification checklist
-- [ ] Backend health check works: `GET https://your-api.onrender.com/api/health`
+- [ ] Backend health check works: `GET https://your-app.vercel.app/api/health`
 - [ ] Products load on the deployed shop page
 - [ ] Registration & login work in production
 - [ ] Placing an order works and appears in My Account
 - [ ] Admin login works and the dashboard loads
-- [ ] Logo / banner / product image uploads succeed and show live
+- [ ] Logo / banner / product image uploads succeed and show live (requires Cloudinary)
 
 ---
 
@@ -253,10 +268,9 @@ You must create these accounts and paste the credentials into your env vars / ho
 |---------|---------------|---------------|
 | MongoDB Atlas | Cluster + DB user + connection string | `MONGODB_URI` |
 | Cloudinary | Cloud name, API key, API secret | `CLOUDINARY_*` |
-| Render | Account + web service | Backend hosting |
-| Vercel | Account + project | Frontend hosting |
+| Vercel | Account + project | Frontend + backend hosting (monorepo) |
 
-> The app **cannot** create these accounts for you — MongoDB Atlas, Cloudinary, Render, and Vercel all require your own sign-up and credentials.
+> The app **cannot** create these accounts for you — MongoDB Atlas, Cloudinary, and Vercel all require your own sign-up and credentials.
 
 ---
 

@@ -20,6 +20,9 @@ client/build/
 client/dist/
 server/dist/
 
+# Local embedded MongoDB data (offline fallback)
+server/.mongo-data/
+
 # Logs
 *.log
 npm-debug.log*
