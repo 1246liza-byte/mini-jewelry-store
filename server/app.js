@@ -5,7 +5,7 @@ const mongoose = require('mongoose');
 
 const connectDB = require('./config/db');
 const seedData = require('./config/seed');
-const User = require('./models/User');
+const WebsiteSettings = require('./models/WebsiteSettings');
 const { notFound, errorHandler } = require('./middleware/errorHandler');
 
 // Import routes
@@ -25,8 +25,8 @@ const isVercel = !!process.env.VERCEL;
 const initDatabase = async () => {
     await connectDB();
     try {
-        const userCount = await User.estimatedDocumentCount();
-        if (userCount === 0) {
+        const settingsCount = await WebsiteSettings.estimatedDocumentCount();
+        if (settingsCount === 0) {
             console.log('Empty database detected — seeding default data...');
             await seedData();
             console.log('Auto-seed complete.');

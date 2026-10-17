@@ -129,8 +129,12 @@ CLOUDINARY_API_SECRET=your_api_secret
 PORT=5000
 NODE_ENV=development
 CLIENT_URL=http://localhost:3000
-ADMIN_EMAIL=admin@rosegold.com
-ADMIN_PASSWORD=Admin@12345
+# The admin user is ONLY created if BOTH ADMIN_EMAIL and ADMIN_PASSWORD are set.
+# There are NO default/hardcoded admin credentials — set your own real values.
+ADMIN_EMAIL=your_admin_email@example.com
+ADMIN_PASSWORD=your_strong_admin_password
+ADMIN_NAME=Admin
+ADMIN_PHONE=
 ```
 
 Generate a strong `JWT_SECRET`:
@@ -144,7 +148,7 @@ node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
 VITE_API_URL=http://localhost:5000/api
 ```
 
-### 3. Seed the database (creates admin + sample products)
+### 3. Seed the database (creates admin + default settings)
 
 ```bash
 cd server
@@ -152,9 +156,9 @@ npm run seed
 ```
 
 This creates:
-- **Admin login:** `admin@rosegold.com` / `Admin@12345`
-- 12 sample jewelry products with real images
-- Default website settings (banner, hero text, etc.)
+- **Admin login** — only if you set `ADMIN_EMAIL` and `ADMIN_PASSWORD` in `server/.env` (no default credentials)
+- **Default website settings** (banner, hero text, etc.)
+- **No sample products** — the store starts empty; add your own products via the admin dashboard
 
 ### 4. Start both servers
 
@@ -176,7 +180,7 @@ Visit **http://localhost:3000**.
 
 ## 🖼️ How to Change the Logo, Banner & Product Images (No Code!)
 
-1. Log in as admin (`admin@rosegold.com` / `Admin@12345`).
+1. Log in as admin (the email/password you set in `ADMIN_EMAIL` / `ADMIN_PASSWORD`).
 2. You'll be redirected to the **Admin Panel**. Click **Customization** in the sidebar.
 3. **Logo:** scroll to *Branding* → choose a file under *Logo* → it uploads to Cloudinary and previews. Click **Save Changes**.
 4. **Banner:** scroll to *Homepage Banner* → choose a file → preview → **Save Changes**.
@@ -233,8 +237,10 @@ backend serverless function at runtime):
 | `CLOUDINARY_API_KEY` | Your Cloudinary API key | Backend |
 | `CLOUDINARY_API_SECRET` | Your Cloudinary API secret | Backend |
 | `CLIENT_URL` | Your deployed frontend URL, e.g. `https://rose-gold.vercel.app` | Backend |
-| `ADMIN_EMAIL` | Admin login email (used when auto-seeding) | Backend |
-| `ADMIN_PASSWORD` | Admin login password (used when auto-seeding) | Backend |
+| `ADMIN_EMAIL` | Admin login email (required to create the admin user) | Backend |
+| `ADMIN_PASSWORD` | Admin login password (required to create the admin user) | Backend |
+| `ADMIN_NAME` | (optional) Admin display name | Backend |
+| `ADMIN_PHONE` | (optional) Admin phone number | Backend |
 
 Generate a strong `JWT_SECRET`:
 ```bash
