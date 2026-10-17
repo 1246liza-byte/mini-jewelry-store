@@ -15,7 +15,8 @@ const settingsRoutes = require('./routes/settingsRoutes');
 const uploadRoutes = require('./routes/uploadRoutes');
 
 // On Vercel, the filesystem is read-only/ephemeral, so local disk uploads
-// cannot be served. Cloudinary is the only persistent image store there.
+// cannot be served. Images are stored as base64 data URLs in MongoDB, or
+// via Cloudinary if it is configured.
 const isVercel = !!process.env.VERCEL;
 
 // Connect to MongoDB, then auto-seed if the database is empty so the app
