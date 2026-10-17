@@ -8,7 +8,6 @@
         },
         "server": {
             "root": "server",
-            "framework": "nodejs",
             "entrypoint": "api/index.js",
             "buildCommand": "npm install"
         }
